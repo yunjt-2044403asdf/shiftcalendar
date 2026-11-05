@@ -491,7 +491,7 @@
 </div>
 
 <script>
-  const CLIENT_ID = '496174598799-sae1kqjk7tq0c4vf4cees0ad7qhdnsbf.apps.googleusercontent.com'; // 본인의 클라이언트 ID 입력
+  const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com'; // 본인의 클라이언트 ID 입력
   const SCOPES = 'https://www.googleapis.com/auth/calendar'; 
   let tokenClient;
   let googleEventsCache = {}; 
@@ -603,9 +603,6 @@
               memoVal = event.description.replace(/^교대 근무:.*\n?/, '').trim();
             }
           }
-          if (!memoVal) {
-            memoVal = event.summary;
-          }
 
           googleEventsCache[dateStr] = memoVal;
 
@@ -642,11 +639,9 @@
   async function deleteCurrentMemo() {
     if (!activeModalDateStr) return;
 
-    // 1. 기기 로컬 메모 삭제
     localStorage.removeItem('memo_' + activeModalDateStr);
     document.getElementById('modalMemoInput').value = '';
 
-    // 2. 구글 연동 상태인 경우 구글 캘린더 서버에서도 해당 일정을 확실하게 삭제
     if (gapi.client && gapi.client.getToken() !== null) {
       const eventIds = googleEventIdsCache[activeModalDateStr];
       if (eventIds && eventIds.length > 0) {
@@ -710,6 +705,7 @@
     let summary = `[${myTeam}조] ${shiftInfo.code}`;
     if (holidayName) summary += ` (${holidayName})`;
 
+    // 근무 정보와 메모를 보기 좋게 조합하여 설명(Description)에 기록
     let description = `교대 근무: ${myTeam}조 ${shiftInfo.code}`;
     if (memoText) {
       description += `\n\n[메모]\n${memoText}`;
@@ -727,7 +723,7 @@
         'calendarId': 'primary',
         'resource': event,
       });
-      alert(`[${dateStr}] 구글 캘린더와 기기에 동일한 서식으로 저장되었습니다!`);
+      alert(`[${dateStr}] 구글 캘린더와 기기에 보기 좋게 저장되었습니다!`);
       closeModal('detailModal');
       await fetchAndRenderGoogleEvents(); 
     } catch (err) {
