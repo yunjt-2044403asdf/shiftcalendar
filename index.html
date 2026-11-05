@@ -101,6 +101,12 @@
       cursor: pointer;
     }
 
+    .google-login-btn.linked {
+      background: #e6f4ea;
+      color: #137333;
+      border-color: #ceead6;
+    }
+
     .calendar-header {
       display: flex;
       justify-content: space-between;
@@ -427,6 +433,7 @@
         <option value="4">4조</option>
       </select>
     </div>
+    <!-- 로그인 및 연동 해제 겸용 버튼 -->
     <button class="google-login-btn" id="googleAuthBtn" onclick="handleAuthClick()">구글 로그인</button>
   </div>
 
@@ -465,7 +472,6 @@
           <button class="btn-memo-delete" onclick="deleteCurrentMemo()">삭제</button>
           <button class="btn-memo-save" onclick="saveCurrentMemo()">저장</button>
         </div>
-        <!-- 구글 로그인 상태일 때만 보이거나 연동되는 동기화 버튼 -->
         <button class="btn-gcal-sync" onclick="syncToGoogleCalendar()">📅 캘린더 등록</button>
       </div>
     </div>
@@ -519,26 +525,41 @@
     setTimeout(gisLoaded, 500);
   };
 
+  // 로그인 및 연동 해제 토글 함수
   function handleAuthClick() {
     if (!tokenClient) {
       alert('구글 인증 모듈이 아직 로드되지 않았습니다. 잠시 후 다시 시도해 주세요.');
       return;
     }
+
+    const token = gapi.client.getToken();
+    
+    // 이미 연동되어 있는 상태라면 -> 연동 해제 처리
+    if (token !== null) {
+      if (confirm('구글 계정 연동을 해제하시겠습니까?')) {
+        google.accounts.oauth2.revoke(token.access_token, () => {
+          gapi.client.setToken(null);
+          const btn = document.getElementById('googleAuthBtn');
+          btn.innerText = '구글 로그인';
+          btn.classList.remove('linked');
+          alert('구글 연동이 해제되었습니다.');
+        });
+      }
+      return;
+    }
+
+    // 로그인되어 있지 않은 상태라면 -> 로그인 진행
     tokenClient.callback = async (resp) => {
       if (resp.error !== undefined) {
         throw (resp);
       }
-      document.getElementById('googleAuthBtn').innerText = '구글 연동됨';
-      document.getElementById('googleAuthBtn').style.background = '#e6f4ea';
-      document.getElementById('googleAuthBtn').style.color = '#137333';
+      const btn = document.getElementById('googleAuthBtn');
+      btn.innerText = '구글 연동됨 (해제)';
+      btn.classList.add('linked');
       alert('구글 계정이 성공적으로 연동되었습니다!');
     };
 
-    if (gapi.client.getToken() === null) {
-      tokenClient.requestAccessToken({prompt: 'consent'});
-    } else {
-      tokenClient.requestAccessToken({prompt: ''});
-    }
+    tokenClient.requestAccessToken({prompt: 'consent'});
   }
 
   // 메모 저장 시 로그인 상태라면 구글 캘린더에도 메모 내용까지 함께 자동 등록
@@ -546,7 +567,6 @@
     if (!activeModalDateStr) return;
     const memoText = document.getElementById('modalMemoInput').value.trim();
     
-    // 1. 기존대로 로컬 기기(LocalStorage)에 메모 저장
     if (memoText) {
       localStorage.setItem('memo_' + activeModalDateStr, memoText);
     } else {
@@ -555,7 +575,6 @@
     
     renderCalendar();
 
-    // 2. 구글 로그인 상태가 되어 있다면 구글 캘린더에도 자동 동기화 시도
     if (gapi.client && gapi.client.getToken() !== null) {
       await autoSyncMemoToGoogleCalendar(activeModalDateStr, memoText);
     } else {
@@ -564,7 +583,6 @@
     }
   }
 
-  // 삭제 버튼 클릭 시 로컬 기기 메모 삭제
   function deleteCurrentMemo() {
     if (!activeModalDateStr) return;
     localStorage.removeItem('memo_' + activeModalDateStr);
@@ -574,11 +592,9 @@
     closeModal('detailModal');
   }
 
-  // 수동 캘린더 등록 버튼 또는 자동 동기화용 함수
   async function syncToGoogleCalendar() {
     const memoText = document.getElementById('modalMemoInput').value.trim();
     
-    // 임시로 입력한 메모도 로컬에 먼저 반영
     if (memoText) {
       localStorage.setItem('memo_' + activeModalDateStr, memoText);
     } else {
@@ -589,7 +605,6 @@
     await autoSyncMemoToGoogleCalendar(activeModalDateStr, memoText);
   }
 
-  // 구글 캘린더에 일정 및 메모 내용을 전송하는 내부 함수
   async function autoSyncMemoToGoogleCalendar(dateStr, memoText) {
     if (gapi.client.getToken() === null) {
       alert('구글 로그인이 되어 있지 않아 기기(로컬)에만 저장되었습니다.');
@@ -617,7 +632,6 @@
     let summary = `[${myTeam}조] ${shiftInfo.code}`;
     if (holidayName) summary += ` (${holidayName})`;
 
-    // 구글 캘린더 상세 설명(Description)에 메모 내용 포함
     let description = `교대 근무: ${myTeam}조 ${shiftInfo.code}`;
     if (memoText) {
       description += `\n\n[메모]\n${memoText}`;
