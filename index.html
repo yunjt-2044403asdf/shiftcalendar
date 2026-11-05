@@ -571,7 +571,6 @@
     tokenClient.requestAccessToken({prompt: 'consent'});
   }
 
-  // 구글 캘린더의 날짜 지정 일정 및 시간 지정 일정(dateTime)을 모두 인식하여 달력 메모로 동기화
   async function fetchAndRenderGoogleEvents() {
     if (!gapi.client || gapi.client.getToken() === null) return;
 
@@ -594,7 +593,6 @@
       const items = response.result.items || [];
       
       items.forEach(event => {
-        // 날짜 일정(date) 또는 시간 지정 일정(dateTime) 모두 지원
         let startStr = event.start.date || (event.start.dateTime ? event.start.dateTime.split('T')[0] : null);
         let endStr = event.end.date || (event.end.dateTime ? event.end.dateTime.split('T')[0] : null);
 
@@ -606,7 +604,6 @@
           let curr = parseSafeDate(startStr);
           let last = parseSafeDate(endStr);
           
-          // 전일 종료 처리 (date 형식인 경우 다음날 새벽이므로 하루 보정)
           if (event.end.date && endStr !== startStr) {
             last.setDate(last.getDate() - 1);
           }
@@ -1068,7 +1065,8 @@
       listEl.appendChild(row);
     });
 
-    let displayContent = localStorage.getItem('memo_' + dateStr) || googleEventsCache[dateStr] || '';
+    // 구글 캘린더 캐시 또는 로컬 저장소에 있는 내용을 모달 메모 입력창에 우선 표시
+    let displayContent = googleEventsCache[dateStr] || localStorage.getItem('memo_' + dateStr) || '';
     document.getElementById('modalMemoInput').value = displayContent;
     document.getElementById('detailModal').style.display = 'flex';
   }
