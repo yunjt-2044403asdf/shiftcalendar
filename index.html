@@ -571,7 +571,7 @@
     tokenClient.requestAccessToken({prompt: 'consent'});
   }
 
-  // 구글 캘린더의 일정을 가져와 달력 메모(localStorage 및 뱃지)로 동기화
+  // 구글 캘린더의 날짜 지정 일정 및 시간 지정 일정(dateTime)을 모두 인식하여 달력 메모로 동기화
   async function fetchAndRenderGoogleEvents() {
     if (!gapi.client || gapi.client.getToken() === null) return;
 
@@ -594,23 +594,26 @@
       const items = response.result.items || [];
       
       items.forEach(event => {
+        // 날짜 일정(date) 또는 시간 지정 일정(dateTime) 모두 지원
         let startStr = event.start.date || (event.start.dateTime ? event.start.dateTime.split('T')[0] : null);
         let endStr = event.end.date || (event.end.dateTime ? event.end.dateTime.split('T')[0] : null);
 
-        if (startStr && endStr) {
-          // 구글 캘린더에 적힌 제목(summary)을 메모 내용으로 가져옴
+        if (startStr) {
           let memoVal = event.summary || '';
+
+          if (!endStr) endStr = startStr;
 
           let curr = parseSafeDate(startStr);
           let last = parseSafeDate(endStr);
-          if (event.end.date) {
-            last.setDate(last.getDate() - 1); 
+          
+          // 전일 종료 처리 (date 형식인 경우 다음날 새벽이므로 하루 보정)
+          if (event.end.date && endStr !== startStr) {
+            last.setDate(last.getDate() - 1);
           }
 
           while (curr <= last) {
             let dateStr = formatDate(curr);
             
-            // 구글에서 가져온 제목을 기기 메모에도 동기화 저장
             if (memoVal) {
               localStorage.setItem('memo_' + dateStr, memoVal);
             }
@@ -684,7 +687,6 @@
     closeModal('detailModal');
   }
 
-  // 달력에서 메모를 저장하면 구글 캘린더의 일정 제목(summary)으로 바로 반영
   async function syncSingleEventToGoogleCalendar(dateStr, memoText) {
     const existingIds = googleEventIdsCache[dateStr];
     if (existingIds && existingIds.length > 0) {
@@ -700,14 +702,12 @@
       }
     }
 
-    // 메모 내용이 없으면 구글 캘린더에 생성하지 않음
     if (!memoText) {
       closeModal('detailModal');
       await fetchAndRenderGoogleEvents();
       return;
     }
 
-    // 구글 캘린더 제목(summary)에 사용자가 적은 메모 내용을 그대로 입력
     const event = {
       'summary': memoText,
       'description': `메모: ${memoText}`,
