@@ -505,6 +505,15 @@
     await gapi.client.init({
       discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
     });
+
+    const savedToken = localStorage.getItem('g_access_token');
+    if (savedToken) {
+      gapi.client.setToken({ access_token: savedToken });
+      const btn = document.getElementById('googleAuthBtn');
+      btn.innerText = '구글 연동됨 (해제)';
+      btn.classList.add('linked');
+      await fetchAndRenderGoogleEvents();
+    }
   }
 
   function gisLoaded() {
@@ -518,6 +527,7 @@
   window.onload = function() {
     setTimeout(gapiLoaded, 500);
     setTimeout(gisLoaded, 500);
+    initSwipeGesture();
   };
 
   function handleAuthClick() {
@@ -532,6 +542,7 @@
       if (confirm('구글 계정 연동을 해제하시겠습니까?')) {
         google.accounts.oauth2.revoke(token.access_token, () => {
           gapi.client.setToken(null);
+          localStorage.removeItem('g_access_token');
           googleEventsCache = {};
           googleEventIdsCache = {};
           const btn = document.getElementById('googleAuthBtn');
@@ -548,6 +559,8 @@
       if (resp.error !== undefined) {
         throw (resp);
       }
+      localStorage.setItem('g_access_token', resp.access_token);
+
       const btn = document.getElementById('googleAuthBtn');
       btn.innerText = '구글 연동됨 (해제)';
       btn.classList.add('linked');
@@ -581,7 +594,6 @@
       items.forEach(event => {
         const dateStr = event.start.date || (event.start.dateTime ? event.start.dateTime.split('T')[0] : null);
         if (dateStr) {
-          // 구글 캘린더 설명(Description) 또는 요약에서 메모 내용 추출
           let memoVal = '';
           if (event.description) {
             const parts = event.description.split('[메모]\n');
@@ -607,12 +619,10 @@
     }
   }
 
-  // 통일된 서식으로 저장 및 구글 동기화
   async function saveCurrentMemo() {
     if (!activeModalDateStr) return;
     const memoText = document.getElementById('modalMemoInput').value.trim();
     
-    // 1. 기기 로컬에 단일 메모 저장
     if (memoText) {
       localStorage.setItem('memo_' + activeModalDateStr, memoText);
     } else {
@@ -621,7 +631,6 @@
     
     renderCalendar();
 
-    // 2. 구글 연동 상태인 경우 기존 일정 정리 후 단일 일정/메모로 새로 등록 (중복 방지)
     if (gapi.client && gapi.client.getToken() !== null) {
       await syncSingleEventToGoogleCalendar(activeModalDateStr, memoText);
     } else {
@@ -633,9 +642,11 @@
   async function deleteCurrentMemo() {
     if (!activeModalDateStr) return;
 
+    // 1. 기기 로컬 메모 삭제
     localStorage.removeItem('memo_' + activeModalDateStr);
     document.getElementById('modalMemoInput').value = '';
 
+    // 2. 구글 연동 상태인 경우 구글 캘린더 서버에서도 해당 일정을 확실하게 삭제
     if (gapi.client && gapi.client.getToken() !== null) {
       const eventIds = googleEventIdsCache[activeModalDateStr];
       if (eventIds && eventIds.length > 0) {
@@ -646,14 +657,15 @@
               'eventId': eventId
             });
           }
-          alert('기기 메모와 구글 캘린더 일정이 모두 삭제되었습니다.');
         } catch (err) {
           console.error('구글 캘린더 일정 삭제 오류:', err);
-          alert('기기 메모는 삭제되었으나 구글 캘린더 일정 삭제 중 오류가 발생했습니다.');
         }
-      } else {
-        alert('기기 메모가 삭제되었습니다.');
       }
+      
+      delete googleEventsCache[activeModalDateStr];
+      delete googleEventIdsCache[activeModalDateStr];
+      
+      alert('기기 메모와 구글 캘린더 일정이 모두 삭제되었습니다.');
       await fetchAndRenderGoogleEvents();
     } else {
       alert('기기 메모가 삭제되었습니다.');
@@ -671,7 +683,6 @@
       return;
     }
 
-    // 기존에 해당 날짜에 등록된 구글 캘린더 이벤트들이 있다면 먼저 모두 삭제 (중복 생성 방지)
     const existingIds = googleEventIdsCache[dateStr];
     if (existingIds && existingIds.length > 0) {
       for (const oldId of existingIds) {
@@ -699,7 +710,6 @@
     let summary = `[${myTeam}조] ${shiftInfo.code}`;
     if (holidayName) summary += ` (${holidayName})`;
 
-    // 동일한 서식 적용
     let description = `교대 근무: ${myTeam}조 ${shiftInfo.code}`;
     if (memoText) {
       description += `\n\n[메모]\n${memoText}`;
@@ -731,6 +741,31 @@
   let pickerYear = new Date().getFullYear();
   let selectedPickerMonth = new Date().getMonth();
   let activeModalDateStr = '';
+
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  function initSwipeGesture() {
+    const container = document.getElementById('calendarContainer');
+    
+    container.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+
+    container.addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe();
+    }, {passive: true});
+  }
+
+  function handleSwipe() {
+    const threshold = 50;
+    if (touchEndX < touchStartX - threshold) {
+      changeMonth(1);
+    } else if (touchEndX > touchStartX + threshold) {
+      changeMonth(-1);
+    }
+  }
 
   function parseSafeDate(dateStr) {
     if (!dateStr) return new Date();
@@ -998,7 +1033,6 @@
         cell.appendChild(bigTag);
       }
 
-      // 달력 칸에 단 하나의 메모 뱃지만 깔끔하게 표시
       const savedMemo = localStorage.getItem('memo_' + dateString) || googleEventsCache[dateString];
       if (savedMemo) {
         const memoBadge = document.createElement('div');
@@ -1041,7 +1075,6 @@
       listEl.appendChild(row);
     });
 
-    // 팝업창 메모 입력란에 동일한 서식으로 내용 불러오기
     let displayContent = localStorage.getItem('memo_' + dateStr) || googleEventsCache[dateStr] || '';
     document.getElementById('modalMemoInput').value = displayContent;
     document.getElementById('detailModal').style.display = 'flex';
