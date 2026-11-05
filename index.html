@@ -598,15 +598,22 @@
 
         if (startStr) {
           let memoVal = event.summary || '';
-
           if (!endStr) endStr = startStr;
 
           let curr = parseSafeDate(startStr);
           let last = parseSafeDate(endStr);
           
-          if (event.end.date && endStr !== startStr) {
+          // 구글 캘린더의 하루 종일 일정(date)인 경우 end.date는 다음날 자정이므로 하루를 빼줌
+          if (event.start.date) {
             last.setDate(last.getDate() - 1);
+          } else if (event.end.dateTime) {
+            // 시간 지정 일정인 경우 종료 시간이 딱 자정이면 하루 전날까지만 포함하도록 보정
+            if (last.getHours() === 0 && last.getMinutes() === 0 && last.getSeconds() === 0) {
+              last.setDate(last.getDate() - 1);
+            }
           }
+
+          if (last < curr) last = new Date(curr); // 최소 시작일과 같게 설정
 
           while (curr <= last) {
             let dateStr = formatDate(curr);
@@ -1065,7 +1072,6 @@
       listEl.appendChild(row);
     });
 
-    // 구글 캘린더 캐시 또는 로컬 저장소에 있는 내용을 모달 메모 입력창에 우선 표시
     let displayContent = googleEventsCache[dateStr] || localStorage.getItem('memo_' + dateStr) || '';
     document.getElementById('modalMemoInput').value = displayContent;
     document.getElementById('detailModal').style.display = 'flex';
