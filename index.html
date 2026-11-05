@@ -285,20 +285,6 @@
       font-weight: 600;
     }
 
-    .cell-gcal-badge {
-      font-size: 0.58rem;
-      color: #137333;
-      background: #e6f4ea;
-      border: 1px solid #ceead6;
-      padding: 1px 3px;
-      border-radius: 3px;
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 600;
-    }
-
     .shift-A { background-color: var(--shift-a-color); color: #0d47a1; }
     .shift-B { background-color: var(--shift-b-color); color: #f57f17; }
     .shift-C { background-color: var(--shift-c-color); color: #1b5e20; }
@@ -424,7 +410,7 @@
       .holiday-name { font-size: 0.48rem; padding: 0 2px; }
       .shift-tag { font-size: 0.58rem; padding: 0 2px; margin-top: 1px; height: 13px; }
       .big-shift-container { font-size: 0.95rem; margin-top: 2px; }
-      .cell-memo-badge, .cell-gcal-badge { font-size: 0.5rem; padding: 0 2px; }
+      .cell-memo-badge { font-size: 0.5rem; padding: 0 2px; }
     }
   </style>
 </head>
@@ -509,6 +495,7 @@
   const SCOPES = 'https://www.googleapis.com/auth/calendar'; 
   let tokenClient;
   let googleEventsCache = {}; 
+  let googleEventIdsCache = {}; 
 
   function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
@@ -546,6 +533,7 @@
         google.accounts.oauth2.revoke(token.access_token, () => {
           gapi.client.setToken(null);
           googleEventsCache = {};
+          googleEventIdsCache = {};
           const btn = document.getElementById('googleAuthBtn');
           btn.innerText = '구글 로그인';
           btn.classList.remove('linked');
@@ -588,12 +576,29 @@
       });
 
       googleEventsCache = {};
+      googleEventIdsCache = {};
       const items = response.result.items || [];
       items.forEach(event => {
         const dateStr = event.start.date || (event.start.dateTime ? event.start.dateTime.split('T')[0] : null);
         if (dateStr) {
-          if (!googleEventsCache[dateStr]) googleEventsCache[dateStr] = [];
-          googleEventsCache[dateStr].push(event.summary);
+          // 구글 캘린더 설명(Description) 또는 요약에서 메모 내용 추출
+          let memoVal = '';
+          if (event.description) {
+            const parts = event.description.split('[메모]\n');
+            if (parts.length > 1) {
+              memoVal = parts[1].trim();
+            } else {
+              memoVal = event.description.replace(/^교대 근무:.*\n?/, '').trim();
+            }
+          }
+          if (!memoVal) {
+            memoVal = event.summary;
+          }
+
+          googleEventsCache[dateStr] = memoVal;
+
+          if (!googleEventIdsCache[dateStr]) googleEventIdsCache[dateStr] = [];
+          googleEventIdsCache[dateStr].push(event.id);
         }
       });
       renderCalendar();
@@ -602,11 +607,12 @@
     }
   }
 
-  // 저장 버튼: 연동 상태면 구글 캘린더 및 로컬 저장, 미연동이면 로컬 저장
+  // 통일된 서식으로 저장 및 구글 동기화
   async function saveCurrentMemo() {
     if (!activeModalDateStr) return;
     const memoText = document.getElementById('modalMemoInput').value.trim();
     
+    // 1. 기기 로컬에 단일 메모 저장
     if (memoText) {
       localStorage.setItem('memo_' + activeModalDateStr, memoText);
     } else {
@@ -615,30 +621,69 @@
     
     renderCalendar();
 
-    // 구글 로그인 상태가 되어 있다면 구글 캘린더에도 자동 동기화
+    // 2. 구글 연동 상태인 경우 기존 일정 정리 후 단일 일정/메모로 새로 등록 (중복 방지)
     if (gapi.client && gapi.client.getToken() !== null) {
-      await autoSyncMemoToGoogleCalendar(activeModalDateStr, memoText);
+      await syncSingleEventToGoogleCalendar(activeModalDateStr, memoText);
     } else {
       alert('메모가 기기에 로컬 저장되었습니다.');
       closeModal('detailModal');
     }
   }
 
-  function deleteCurrentMemo() {
+  async function deleteCurrentMemo() {
     if (!activeModalDateStr) return;
+
     localStorage.removeItem('memo_' + activeModalDateStr);
     document.getElementById('modalMemoInput').value = '';
-    renderCalendar();
-    alert('메모가 삭제되었습니다.');
+
+    if (gapi.client && gapi.client.getToken() !== null) {
+      const eventIds = googleEventIdsCache[activeModalDateStr];
+      if (eventIds && eventIds.length > 0) {
+        try {
+          for (const eventId of eventIds) {
+            await gapi.client.calendar.events.delete({
+              'calendarId': 'primary',
+              'eventId': eventId
+            });
+          }
+          alert('기기 메모와 구글 캘린더 일정이 모두 삭제되었습니다.');
+        } catch (err) {
+          console.error('구글 캘린더 일정 삭제 오류:', err);
+          alert('기기 메모는 삭제되었으나 구글 캘린더 일정 삭제 중 오류가 발생했습니다.');
+        }
+      } else {
+        alert('기기 메모가 삭제되었습니다.');
+      }
+      await fetchAndRenderGoogleEvents();
+    } else {
+      alert('기기 메모가 삭제되었습니다.');
+      renderCalendar();
+    }
+
     closeModal('detailModal');
   }
 
-  async function autoSyncMemoToGoogleCalendar(dateStr, memoText) {
+  async function syncSingleEventToGoogleCalendar(dateStr, memoText) {
     const myTeam = parseInt(document.getElementById('myTeam').value, 10);
     if (myTeam === 0) {
-      alert('내 조 선택이 "전체조"로 되어있습니다. 본인 조(1~4조)를 선택한 후 구글 캘린더에 등록해 주세요.');
+      alert('내 조 선택이 "전체조"로 되어있습니다. 본인 조(1~4조)를 선택한 후 저장해 주세요.');
       closeModal('detailModal');
       return;
+    }
+
+    // 기존에 해당 날짜에 등록된 구글 캘린더 이벤트들이 있다면 먼저 모두 삭제 (중복 생성 방지)
+    const existingIds = googleEventIdsCache[dateStr];
+    if (existingIds && existingIds.length > 0) {
+      for (const oldId of existingIds) {
+        try {
+          await gapi.client.calendar.events.delete({
+            'calendarId': 'primary',
+            'eventId': oldId
+          });
+        } catch (e) {
+          console.error('기존 이벤트 삭제 실패:', e);
+        }
+      }
     }
 
     const thisDate = parseSafeDate(dateStr);
@@ -654,6 +699,7 @@
     let summary = `[${myTeam}조] ${shiftInfo.code}`;
     if (holidayName) summary += ` (${holidayName})`;
 
+    // 동일한 서식 적용
     let description = `교대 근무: ${myTeam}조 ${shiftInfo.code}`;
     if (memoText) {
       description += `\n\n[메모]\n${memoText}`;
@@ -667,17 +713,16 @@
     };
 
     try {
-      const request = gapi.client.calendar.events.insert({
+      await gapi.client.calendar.events.insert({
         'calendarId': 'primary',
         'resource': event,
       });
-      await request;
-      alert(`[${dateStr}] 구글 캘린더와 기기에 성공적으로 저장되었습니다!`);
+      alert(`[${dateStr}] 구글 캘린더와 기기에 동일한 서식으로 저장되었습니다!`);
       closeModal('detailModal');
       await fetchAndRenderGoogleEvents(); 
     } catch (err) {
       console.error('구글 캘린더 등록 오류:', err);
-      alert('구글 캘린더 동기화 중 오류가 발생했습니다. 다시 로그인 후 시도해 주세요.');
+      alert('구글 캘린더 동기화 중 오류가 발생했습니다.');
     }
   }
 
@@ -953,21 +998,13 @@
         cell.appendChild(bigTag);
       }
 
-      const savedMemo = localStorage.getItem('memo_' + dateString);
+      // 달력 칸에 단 하나의 메모 뱃지만 깔끔하게 표시
+      const savedMemo = localStorage.getItem('memo_' + dateString) || googleEventsCache[dateString];
       if (savedMemo) {
         const memoBadge = document.createElement('div');
         memoBadge.classList.add('cell-memo-badge');
         memoBadge.innerText = `📝 ${savedMemo}`;
         cell.appendChild(memoBadge);
-      }
-
-      if (googleEventsCache[dateString]) {
-        googleEventsCache[dateString].forEach(summaryText => {
-          const gcalBadge = document.createElement('div');
-          gcalBadge.classList.add('cell-gcal-badge');
-          gcalBadge.innerText = `📌 ${summaryText}`;
-          cell.appendChild(gcalBadge);
-        });
       }
 
       cell.addEventListener('click', () => {
@@ -1004,11 +1041,8 @@
       listEl.appendChild(row);
     });
 
-    // 팝업창 메모 입력란에 로컬 메모 또는 구글 캘린더 일정 내용 불러오기
-    let displayContent = localStorage.getItem('memo_' + dateStr) || '';
-    if (!displayContent && googleEventsCache[dateStr] && googleEventsCache[dateStr].length > 0) {
-      displayContent = googleEventsCache[dateStr].join(', ');
-    }
+    // 팝업창 메모 입력란에 동일한 서식으로 내용 불러오기
+    let displayContent = localStorage.getItem('memo_' + dateStr) || googleEventsCache[dateStr] || '';
     document.getElementById('modalMemoInput').value = displayContent;
     document.getElementById('detailModal').style.display = 'flex';
   }
