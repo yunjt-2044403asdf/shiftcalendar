@@ -365,7 +365,7 @@
 
     #modalMemoInput {
       width: 100%;
-      height: 50px;
+      height: 60px;
       border: 1px solid #ccc;
       border-radius: 8px;
       padding: 8px;
@@ -376,16 +376,13 @@
 
     .memo-btn-group {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
       margin-top: 8px;
     }
 
-    .memo-left-btns { display: flex; gap: 6px; }
-
-    .btn-memo-save { background: var(--primary-color); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; }
+    .btn-memo-save { background: var(--primary-color); color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; }
     .btn-memo-delete { background: #f1f3f5; color: #495057; border: 1px solid #ced4da; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; }
-    .btn-gcal-sync { background: #34a853; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 0.78rem; cursor: pointer; }
 
     .ios-modal-card {
       background: rgba(38, 38, 42, 0.95);
@@ -478,14 +475,11 @@
     <div class="modal-body" id="modalShiftList"></div>
 
     <div class="modal-memo-section">
-      <div class="memo-header-title">📝 메모</div>
+      <div class="memo-header-title">📝 메모 및 일정</div>
       <textarea id="modalMemoInput" placeholder="이 날짜에 기억할 메모를 적어보세요..."></textarea>
       <div class="memo-btn-group">
-        <div class="memo-left-btns">
-          <button class="btn-memo-delete" onclick="deleteCurrentMemo()">삭제</button>
-          <button class="btn-memo-save" onclick="saveCurrentMemo()">저장</button>
-        </div>
-        <button class="btn-gcal-sync" onclick="syncToGoogleCalendar()">📅 캘린더 등록</button>
+        <button class="btn-memo-delete" onclick="deleteCurrentMemo()">삭제</button>
+        <button class="btn-memo-save" onclick="saveCurrentMemo()">저장</button>
       </div>
     </div>
   </div>
@@ -512,10 +506,9 @@
 
 <script>
   const CLIENT_ID = '496174598799-sae1kqjk7tq0c4vf4cees0ad7qhdnsbf.apps.googleusercontent.com'; // 본인의 클라이언트 ID 입력
-  // 읽기와 쓰기 권한이 모두 포함된 스코프
   const SCOPES = 'https://www.googleapis.com/auth/calendar'; 
   let tokenClient;
-  let googleEventsCache = {}; // 구글 캘린더 일정 캐시 저장소
+  let googleEventsCache = {}; 
 
   function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
@@ -571,14 +564,12 @@
       btn.innerText = '구글 연동됨 (해제)';
       btn.classList.add('linked');
       alert('구글 계정이 성공적으로 연동되었습니다!');
-      // 로그인 성공 시 해당 월 일정 불러와서 렌더링 갱신
       await fetchAndRenderGoogleEvents();
     };
 
     tokenClient.requestAccessToken({prompt: 'consent'});
   }
 
-  // 구글 캘린더 일정 가져오기 함수
   async function fetchAndRenderGoogleEvents() {
     if (!gapi.client || gapi.client.getToken() === null) return;
 
@@ -611,6 +602,7 @@
     }
   }
 
+  // 저장 버튼: 연동 상태면 구글 캘린더 및 로컬 저장, 미연동이면 로컬 저장
   async function saveCurrentMemo() {
     if (!activeModalDateStr) return;
     const memoText = document.getElementById('modalMemoInput').value.trim();
@@ -623,6 +615,7 @@
     
     renderCalendar();
 
+    // 구글 로그인 상태가 되어 있다면 구글 캘린더에도 자동 동기화
     if (gapi.client && gapi.client.getToken() !== null) {
       await autoSyncMemoToGoogleCalendar(activeModalDateStr, memoText);
     } else {
@@ -640,26 +633,7 @@
     closeModal('detailModal');
   }
 
-  async function syncToGoogleCalendar() {
-    const memoText = document.getElementById('modalMemoInput').value.trim();
-    
-    if (memoText) {
-      localStorage.setItem('memo_' + activeModalDateStr, memoText);
-    } else {
-      localStorage.removeItem('memo_' + activeModalDateStr);
-    }
-    renderCalendar();
-
-    await autoSyncMemoToGoogleCalendar(activeModalDateStr, memoText);
-  }
-
   async function autoSyncMemoToGoogleCalendar(dateStr, memoText) {
-    if (gapi.client.getToken() === null) {
-      alert('구글 로그인이 되어 있지 않아 기기(로컬)에만 저장되었습니다.');
-      closeModal('detailModal');
-      return;
-    }
-
     const myTeam = parseInt(document.getElementById('myTeam').value, 10);
     if (myTeam === 0) {
       alert('내 조 선택이 "전체조"로 되어있습니다. 본인 조(1~4조)를 선택한 후 구글 캘린더에 등록해 주세요.');
@@ -698,9 +672,9 @@
         'resource': event,
       });
       await request;
-      alert(`[${dateStr}] 메모와 근무 일정이 구글 캘린더에 성공적으로 동기화되었습니다!`);
+      alert(`[${dateStr}] 구글 캘린더와 기기에 성공적으로 저장되었습니다!`);
       closeModal('detailModal');
-      await fetchAndRenderGoogleEvents(); // 등록 후 최신 일정 다시 불러오기
+      await fetchAndRenderGoogleEvents(); 
     } catch (err) {
       console.error('구글 캘린더 등록 오류:', err);
       alert('구글 캘린더 동기화 중 오류가 발생했습니다. 다시 로그인 후 시도해 주세요.');
@@ -979,7 +953,6 @@
         cell.appendChild(bigTag);
       }
 
-      // 1. 로컬 저장 메모 뱃지 표시
       const savedMemo = localStorage.getItem('memo_' + dateString);
       if (savedMemo) {
         const memoBadge = document.createElement('div');
@@ -988,7 +961,6 @@
         cell.appendChild(memoBadge);
       }
 
-      // 2. 구글 캘린더 연동 일정 뱃지 표시
       if (googleEventsCache[dateString]) {
         googleEventsCache[dateString].forEach(summaryText => {
           const gcalBadge = document.createElement('div');
@@ -1032,7 +1004,12 @@
       listEl.appendChild(row);
     });
 
-    document.getElementById('modalMemoInput').value = localStorage.getItem('memo_' + dateStr) || '';
+    // 팝업창 메모 입력란에 로컬 메모 또는 구글 캘린더 일정 내용 불러오기
+    let displayContent = localStorage.getItem('memo_' + dateStr) || '';
+    if (!displayContent && googleEventsCache[dateStr] && googleEventsCache[dateStr].length > 0) {
+      displayContent = googleEventsCache[dateStr].join(', ');
+    }
+    document.getElementById('modalMemoInput').value = displayContent;
     document.getElementById('detailModal').style.display = 'flex';
   }
 
