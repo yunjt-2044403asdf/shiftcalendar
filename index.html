@@ -594,13 +594,14 @@
       items.forEach(event => {
         const dateStr = event.start.date || (event.start.dateTime ? event.start.dateTime.split('T')[0] : null);
         if (dateStr) {
-          let memoVal = '';
+          // 구글 캘린더의 일정 제목(summary)을 메모 내용으로 우선 사용
+          let memoVal = event.summary || '';
+
+          // 만약 설명(description)에 [메모]가 따로 있다면 그것을 우선 반영
           if (event.description) {
             const parts = event.description.split('[메모]\n');
             if (parts.length > 1) {
               memoVal = parts[1].trim();
-            } else {
-              memoVal = event.description.replace(/^교대 근무:.*\n?/, '').trim();
             }
           }
 
@@ -705,7 +706,6 @@
     let summary = `[${myTeam}조] ${shiftInfo.code}`;
     if (holidayName) summary += ` (${holidayName})`;
 
-    // 근무 정보와 메모를 보기 좋게 조합하여 설명(Description)에 기록
     let description = `교대 근무: ${myTeam}조 ${shiftInfo.code}`;
     if (memoText) {
       description += `\n\n[메모]\n${memoText}`;
@@ -723,7 +723,7 @@
         'calendarId': 'primary',
         'resource': event,
       });
-      alert(`[${dateStr}] 구글 캘린더와 기기에 보기 좋게 저장되었습니다!`);
+      alert(`[${dateStr}] 구글 캘린더와 기기에 동일한 서식으로 저장되었습니다!`);
       closeModal('detailModal');
       await fetchAndRenderGoogleEvents(); 
     } catch (err) {
