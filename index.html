@@ -610,7 +610,7 @@
       await fetchAndRenderGoogleEvents();
     };
 
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    tokenClient.requestAccessToken({ prompt: 'select_account' }); // 계정 선택만 띄우거나, 이미 로그인된 경우 생략
   }
 
   async function fetchAndRenderGoogleEvents() {
