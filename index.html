@@ -312,7 +312,7 @@
     .modal-card {
       background: white;
       width: 100%;
-      max-width: 330px;
+      max-width: 360px;
       border-radius: 16px;
       padding: 18px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.25);
@@ -322,32 +322,126 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       border-bottom: 1px solid #eee;
-      padding-bottom: 8px;
+      padding-bottom: 6px;
     }
 
     .modal-title { font-size: 1.05rem; font-weight: bold; }
     .modal-close { background: none; border: none; font-size: 1.2rem; font-weight: bold; color: #888; cursor: pointer; }
 
-    .modal-body { display: flex; flex-direction: column; gap: 6px; }
+    .modal-body { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 
     .modal-item {
       display: flex;
       justify-content: space-between;
-      padding: 8px 10px;
+      padding: 6px 10px;
       border-radius: 6px;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: bold;
     }
 
     .modal-memo-section {
-      margin-top: 12px;
-      padding-top: 10px;
       border-top: 1px solid #eee;
+      padding-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .date-range-picker-box {
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       gap: 8px;
+    }
+
+    .date-inputs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .date-input-field {
+      flex: 1;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .date-input-field.active {
+      border-color: var(--primary-color);
+      background-color: #e8f4fe;
+      color: var(--primary-color);
+    }
+
+    .mini-calendar-dropdown {
+      background: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .mini-cal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+
+    .mini-cal-header button {
+      background: none;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+
+    .mini-cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      text-align: center;
+      font-size: 0.75rem;
+    }
+
+    .mini-cal-day-header {
+      font-weight: bold;
+      color: #666;
+      padding: 4px 0;
+    }
+
+    .mini-cal-cell {
+      padding: 6px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .mini-cal-cell:hover {
+      background-color: #eee;
+    }
+
+    .mini-cal-cell.selected {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .mini-cal-cell.in-range {
+      background-color: #e8f4fe;
+      color: var(--primary-color);
     }
 
     .memo-group {
@@ -359,7 +453,34 @@
     .memo-label {
       font-size: 0.8rem;
       font-weight: 700;
-      color: #555;
+      color: #444;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .all-day-label {
+      font-size: 0.75rem;
+      font-weight: normal;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .time-selector-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .time-selector-row select {
+      flex: 1;
+      padding: 4px;
+      font-size: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
     }
 
     .modal-textarea {
@@ -463,27 +584,86 @@
   </div>
 </div>
 
-<!-- 상세 정보 및 메모/일정 모달 팝업 -->
+<!-- 상세 정보 및 통합 일정/메모 모달 팝업 -->
 <div class="modal-overlay" id="detailModal" onclick="closeModal('detailModal', event)">
   <div class="modal-card" onclick="event.stopPropagation()">
     <div class="modal-header">
       <div class="modal-title" id="modalDateTitle">날짜 상세 정보</div>
       <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
     </div>
-    <div id="modalHolidayInfo" style="color: var(--holiday-color); font-weight: bold; margin-bottom: 8px; font-size: 0.9rem;"></div>
+    <div id="modalHolidayInfo" style="color: var(--holiday-color); font-weight: bold; margin-bottom: 6px; font-size: 0.85rem;"></div>
     <div class="modal-body" id="modalShiftList"></div>
 
     <div class="modal-memo-section">
-      <!-- 일정 칸 (구글 캘린더 연동) -->
-      <div class="memo-group">
-        <label class="memo-label">📅 일정 (구글 캘린더 연동)</label>
-        <textarea id="modalEventInput" class="modal-textarea" placeholder="구글 캘린더에 동기화될 일정을 입력하세요..."></textarea>
+      <!-- 구글 캘린더 스타일 기간 선택 UI -->
+      <div class="date-range-picker-box">
+        <div class="date-inputs-row">
+          <div id="startDateField" class="date-input-field active" onclick="toggleMiniCalendar('start')">시작일</div>
+          <span>~</span>
+          <div id="endDateField" class="date-input-field" onclick="toggleMiniCalendar('end')">종료일</div>
+        </div>
+        <!-- 소형 달력 드롭다운 -->
+        <div id="miniCalendarDropdown" class="mini-calendar-dropdown" style="display: none;">
+          <div class="mini-cal-header">
+            <button onclick="changeMiniCalMonth(-1)">❮</button>
+            <span id="miniCalTitle">2026년 11월</span>
+            <button onclick="changeMiniCalMonth(1)">❯</button>
+          </div>
+          <div class="mini-cal-grid">
+            <div class="mini-cal-day-header" style="color:var(--holiday-color)">일</div>
+            <div class="mini-cal-day-header">월</div>
+            <div class="mini-cal-day-header">화</div>
+            <div class="mini-cal-day-header">수</div>
+            <div class="mini-cal-day-header">목</div>
+            <div class="mini-cal-day-header">금</div>
+            <div class="mini-cal-day-header" style="color:#0275d8">토</div>
+          </div>
+          <div id="miniCalGridDays" class="mini-cal-grid" style="margin-top: 4px;"></div>
+        </div>
       </div>
 
-      <!-- 메모 칸 (기기 전용) -->
+      <!-- 통합 일정/메모 입력 칸 -->
       <div class="memo-group">
-        <label class="memo-label">📝 개인 메모 (기기 전용)</label>
-        <textarea id="modalMemoInput" class="modal-textarea" placeholder="이 기기에만 저장할 개인 메모를 입력하세요..."></textarea>
+        <label class="memo-label">
+          📅 일정 및 메모
+          <span class="all-day-label">
+            <input type="checkbox" id="allDayCheckbox" onchange="toggleTimeInputs()" checked> 하루 종일
+          </span>
+        </label>
+        
+        <div id="timeSelectorContainer" class="time-selector-row" style="display: none; margin-top: 4px;">
+          <select id="startTimeSelect">
+            <option value="09:00">오전 9:00</option>
+            <option value="10:00">오전 10:00</option>
+            <option value="11:00">오전 11:00</option>
+            <option value="12:00">오후 12:00</option>
+            <option value="13:00">오후 1:00</option>
+            <option value="14:00" selected>오후 2:00</option>
+            <option value="15:00">오후 3:00</option>
+            <option value="16:00">오후 4:00</option>
+            <option value="17:00">오후 5:00</option>
+            <option value="18:00">오후 6:00</option>
+            <option value="19:00">오후 7:00</option>
+            <option value="20:00">오후 8:00</option>
+          </select>
+          <span>~</span>
+          <select id="endTimeSelect">
+            <option value="10:00">오전 10:00</option>
+            <option value="11:00">오전 11:00</option>
+            <option value="12:00">오후 12:00</option>
+            <option value="13:00">오후 1:00</option>
+            <option value="14:00">오후 2:00</option>
+            <option value="15:00" selected>오후 3:00</option>
+            <option value="16:00">오후 4:00</option>
+            <option value="17:00">오후 5:00</option>
+            <option value="18:00">오후 6:00</option>
+            <option value="19:00">오후 7:00</option>
+            <option value="20:00">오후 8:00</option>
+            <option value="21:00">오후 9:00</option>
+          </select>
+        </div>
+
+        <textarea id="modalMemoInput" class="modal-textarea" placeholder="일정 또는 메모 내용을 입력하세요..."></textarea>
       </div>
 
       <div class="memo-btn-group">
@@ -514,11 +694,18 @@
 </div>
 
 <script>
-  const CLIENT_ID = '496174598799-sae1kqjk7tq0c4vf4cees0ad7qhdnsbf.apps.googleusercontent.com'; // 본인의 클라이언트 ID 입력
+  const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com'; // 본인의 클라이언트 ID 입력
   const SCOPES = 'https://www.googleapis.com/auth/calendar'; 
   let tokenClient;
   let googleEventsCache = {}; 
   let googleEventIdsCache = {}; 
+  let googleEventDetailsCache = {}; 
+
+  let selectedStartDate = '';
+  let selectedEndDate = '';
+  let activeSelectingField = 'start'; 
+  let miniCalYear = new Date().getFullYear();
+  let miniCalMonth = new Date().getMonth();
 
   function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
@@ -593,6 +780,7 @@
     localStorage.removeItem('g_token_expires_at');
     googleEventsCache = {};
     googleEventIdsCache = {};
+    googleEventDetailsCache = {};
     setLinkedButtonState(false);
     renderCalendar();
   }
@@ -631,6 +819,107 @@
     tokenClient.requestAccessToken({ prompt: 'select_account' });
   }
 
+  function toggleTimeInputs() {
+    const isAllDay = document.getElementById('allDayCheckbox').checked;
+    const timeContainer = document.getElementById('timeSelectorContainer');
+    timeContainer.style.display = isAllDay ? 'none' : 'flex';
+  }
+
+  function toggleMiniCalendar(field) {
+    activeSelectingField = field;
+    document.getElementById('startDateField').classList.toggle('active', field === 'start');
+    document.getElementById('endDateField').classList.toggle('active', field === 'end');
+
+    const dropdown = document.getElementById('miniCalendarDropdown');
+    if (dropdown.style.display === 'block') {
+      dropdown.style.display = 'none';
+    } else {
+      dropdown.style.display = 'block';
+      const targetDateStr = field === 'start' ? selectedStartDate : selectedEndDate;
+      const d = parseSafeDate(targetDateStr);
+      miniCalYear = d.getFullYear();
+      miniCalMonth = d.getMonth();
+      renderMiniCalendar();
+    }
+  }
+
+  function changeMiniCalMonth(delta) {
+    miniCalMonth += delta;
+    if (miniCalMonth > 11) {
+      miniCalMonth = 0;
+      miniCalYear++;
+    } else if (miniCalMonth < 0) {
+      miniCalMonth = 11;
+      miniCalYear--;
+    }
+    renderMiniCalendar();
+  }
+
+  function renderMiniCalendar() {
+    document.getElementById('miniCalTitle').innerText = `${miniCalYear}년 ${miniCalMonth + 1}월`;
+    const daysGrid = document.getElementById('miniCalGridDays');
+    daysGrid.innerHTML = '';
+
+    const firstDay = new Date(miniCalYear, miniCalMonth, 1).getDay();
+    const lastDate = new Date(miniCalYear, miniCalMonth + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      const emptyDiv = document.createElement('div');
+      daysGrid.appendChild(emptyDiv);
+    }
+
+    for (let d = 1; d <= lastDate; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'mini-cal-cell';
+      cell.innerText = d;
+
+      const cellDateStr = `${miniCalYear}-${String(miniCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      if (cellDateStr === selectedStartDate && cellDateStr === selectedEndDate) {
+        cell.classList.add('selected');
+      } else if (cellDateStr === selectedStartDate || cellDateStr === selectedEndDate) {
+        cell.classList.add('selected');
+      } else if (selectedStartDate && selectedEndDate && cellDateStr > selectedStartDate && cellDateStr < selectedEndDate) {
+        cell.classList.add('in-range');
+      }
+
+      cell.onclick = () => {
+        if (activeSelectingField === 'start') {
+          selectedStartDate = cellDateStr;
+          if (selectedStartDate > selectedEndDate) {
+            selectedEndDate = selectedStartDate;
+          }
+          activeSelectingField = 'end';
+          document.getElementById('startDateField').classList.remove('active');
+          document.getElementById('endDateField').classList.add('active');
+        } else {
+          selectedEndDate = cellDateStr;
+          if (selectedEndDate < selectedStartDate) {
+            selectedStartDate = selectedEndDate;
+          }
+          document.getElementById('miniCalendarDropdown').style.display = 'none';
+        }
+        updateDateFieldsDisplay();
+        renderMiniCalendar();
+      };
+
+      daysGrid.appendChild(cell);
+    }
+  }
+
+  function updateDateFieldsDisplay() {
+    document.getElementById('startDateField').innerText = formatDateReadable(selectedStartDate);
+    document.getElementById('endDateField').innerText = formatDateReadable(selectedEndDate);
+  }
+
+  function formatDateReadable(dateStr) {
+    if (!dateStr) return '';
+    const d = parseSafeDate(dateStr);
+    const days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+  }
+
+  // 구글 캘린더 일정을 가져올 때 기간 범위(시작일~종료일) 내 모든 날짜에 메모 캐시 및 로컬 저장소 동기화
   async function fetchAndRenderGoogleEvents() {
     if (!gapi.client || gapi.client.getToken() === null) return;
 
@@ -656,6 +945,7 @@
 
       googleEventsCache = {};
       googleEventIdsCache = {};
+      googleEventDetailsCache = {};
       const items = response.result.items || [];
       
       items.forEach(event => {
@@ -666,26 +956,45 @@
           let eventVal = event.summary || '';
           if (!endStr) endStr = startStr;
 
-          let curr = parseSafeDate(startStr);
-          let last = parseSafeDate(endStr);
-          
-          if (event.start.date) {
-            last.setDate(last.getDate() - 1);
+          let realEndStr = endStr;
+          if (event.end.date && endStr !== startStr) {
+            let tempLast = parseSafeDate(endStr);
+            tempLast.setDate(tempLast.getDate() - 1);
+            realEndStr = formatDate(tempLast);
           } else if (event.end.dateTime) {
-            if (last.getHours() === 0 && last.getMinutes() === 0 && last.getSeconds() === 0) {
-              last.setDate(last.getDate() - 1);
+            let tempLast = parseSafeDate(endStr);
+            if (tempLast.getHours() === 0 && tempLast.getMinutes() === 0) {
+              tempLast.setDate(tempLast.getDate() - 1);
+              realEndStr = formatDate(tempLast);
             }
           }
 
+          let curr = parseSafeDate(startStr);
+          let last = parseSafeDate(realEndStr);
           if (last < curr) last = new Date(curr);
 
+          // 기간 내 모든 날짜에 메모 기록 반영
           while (curr <= last) {
             let dateStr = formatDate(curr);
             
+            if (eventVal) {
+              localStorage.setItem('memo_' + dateStr, eventVal);
+            }
+
             googleEventsCache[dateStr] = eventVal;
+            googleEventDetailsCache[dateStr] = {
+              startDate: startStr,
+              endDate: realEndStr,
+              isAllDay: !!event.start.date,
+              startDateTime: event.start.dateTime || '',
+              endDateTime: event.end.dateTime || '',
+              eventId: event.id
+            };
 
             if (!googleEventIdsCache[dateStr]) googleEventIdsCache[dateStr] = [];
-            googleEventIdsCache[dateStr].push(event.id);
+            if (!googleEventIdsCache[dateStr].includes(event.id)) {
+              googleEventIdsCache[dateStr].push(event.id);
+            }
 
             curr.setDate(curr.getDate() + 1);
           }
@@ -699,26 +1008,39 @@
 
   async function saveCurrentData() {
     if (!activeModalDateStr) return;
-    const eventText = document.getElementById('modalEventInput').value.trim();
     const memoText = document.getElementById('modalMemoInput').value.trim();
+    const isAllDay = document.getElementById('allDayCheckbox').checked;
     
-    // 개인 메모는 로컬 저장소에 보관
-    if (memoText) {
-      localStorage.setItem('local_memo_' + activeModalDateStr, memoText);
-    } else {
-      localStorage.removeItem('local_memo_' + activeModalDateStr);
+    // 선택된 기간 내의 모든 날짜에 로컬 저장소 반영
+    let curr = parseSafeDate(selectedStartDate);
+    let last = parseSafeDate(selectedEndDate);
+    if (last < curr) last = new Date(curr);
+
+    while (curr <= last) {
+      let dStr = formatDate(curr);
+      if (memoText) {
+        localStorage.setItem('memo_' + dStr, memoText);
+      } else {
+        localStorage.removeItem('memo_' + dStr);
+      }
+      curr.setDate(curr.getDate() + 1);
     }
     
     renderCalendar();
 
-    // 일정 칸은 구글 캘린더와 동기화
     if (gapi.client && gapi.client.getToken() !== null) {
-      await syncSingleEventToGoogleCalendar(activeModalDateStr, eventText);
+      let startTime = null;
+      let endTime = null;
+
+      if (!isAllDay) {
+        startTime = document.getElementById('startTimeSelect').value;
+        endTime = document.getElementById('endTimeSelect').value;
+      }
+
+      await syncSingleEventToGoogleCalendar(activeModalDateStr, memoText, isAllDay, startTime, endTime);
     } else {
-      if (eventText) {
-        alert('구글 로그인이 되어있지 않아 일정은 구글에 반영되지 않았습니다. (메모만 기기에 저장됨)');
-      } else {
-        alert('메모가 기기에 로컬 저장되었습니다.');
+      if (memoText) {
+        alert('지정한 기간 동안 기기 메모에 일정이 저장되었습니다.');
       }
       closeModal('detailModal');
     }
@@ -727,12 +1049,16 @@
   async function deleteCurrentData() {
     if (!activeModalDateStr) return;
 
-    // 기기 전용 메모 삭제
-    localStorage.removeItem('local_memo_' + activeModalDateStr);
-    document.getElementById('modalMemoInput').value = '';
-    document.getElementById('modalEventInput').value = '';
+    let curr = parseSafeDate(selectedStartDate);
+    let last = parseSafeDate(selectedEndDate);
+    if (last < curr) last = new Date(curr);
 
-    // 구글 캘린더 일정 삭제
+    while (curr <= last) {
+      localStorage.removeItem('memo_' + formatDate(curr));
+      curr.setDate(curr.getDate() + 1);
+    }
+    document.getElementById('modalMemoInput').value = '';
+
     if (gapi.client && gapi.client.getToken() !== null) {
       const eventIds = googleEventIdsCache[activeModalDateStr];
       if (eventIds && eventIds.length > 0) {
@@ -750,51 +1076,58 @@
       
       delete googleEventsCache[activeModalDateStr];
       delete googleEventIdsCache[activeModalDateStr];
+      delete googleEventDetailsCache[activeModalDateStr];
       
-      alert('기기 메모와 구글 캘린더 일정이 모두 삭제되었습니다.');
+      alert('일정이 삭제되었습니다.');
       await fetchAndRenderGoogleEvents();
     } else {
-      alert('기기 메모가 삭제되었습니다.');
+      alert('메모가 삭제되었습니다.');
       renderCalendar();
     }
 
     closeModal('detailModal');
   }
 
-  async function syncSingleEventToGoogleCalendar(dateStr, eventText) {
-    const existingIds = googleEventIdsCache[dateStr];
-    if (existingIds && existingIds.length > 0) {
-      for (const oldId of existingIds) {
-        try {
-          await gapi.client.calendar.events.delete({
-            'calendarId': 'primary',
-            'eventId': oldId
-          });
-        } catch (e) {
-          console.error('기존 이벤트 삭제 실패:', e);
-        }
+  async function syncSingleEventToGoogleCalendar(dateStr, memoText, isAllDay, startTime, endTime) {
+    const existingIds = googleEventIdsCache[dateStr] || [];
+    for (const oldId of existingIds) {
+      try {
+        await gapi.client.calendar.events.delete({
+          'calendarId': 'primary',
+          'eventId': oldId
+        });
+      } catch (e) {
+        console.error('기존 이벤트 삭제 실패:', e);
       }
     }
 
-    if (!eventText) {
+    if (!memoText) {
       closeModal('detailModal');
       await fetchAndRenderGoogleEvents();
       return;
     }
 
-    const event = {
-      'summary': eventText,
-      'description': `일정: ${eventText}`,
-      'start': { 'date': dateStr },
-      'end': { 'date': dateStr }
+    let event = {
+      'summary': memoText,
+      'description': `메모: ${memoText}`
     };
+
+    if (isAllDay) {
+      event.start = { 'date': selectedStartDate };
+      let endDateObj = parseSafeDate(selectedEndDate);
+      endDateObj.setDate(endDateObj.getDate() + 1); 
+      event.end = { 'date': formatDate(endDateObj) };
+    } else {
+      event.start = { 'dateTime': `${selectedStartDate}T${startTime}:00+09:00` };
+      event.end = { 'dateTime': `${selectedEndDate}T${endTime}:00+09:00` };
+    }
 
     try {
       await gapi.client.calendar.events.insert({
         'calendarId': 'primary',
         'resource': event,
       });
-      alert(`[${dateStr}] 구글 캘린더와 일정이 동기화되었습니다!`);
+      alert(`구글 캘린더에 지정 기간 동안 일정이 저장되었습니다!`);
       closeModal('detailModal');
       await fetchAndRenderGoogleEvents(); 
     } catch (err) {
@@ -1100,8 +1433,7 @@
         cell.appendChild(bigTag);
       }
 
-      // 달력 칸에는 구글 일정 또는 개인 메모 중 하나라도 있으면 뱃지로 표시
-      const badgeText = googleEventsCache[dateString] || localStorage.getItem('local_memo_' + dateString);
+      const badgeText = googleEventsCache[dateString] || localStorage.getItem('memo_' + dateString);
       if (badgeText) {
         const memoBadge = document.createElement('div');
         memoBadge.classList.add('cell-memo-badge');
@@ -1143,10 +1475,32 @@
       listEl.appendChild(row);
     });
 
-    // 각각의 칸에 맞는 데이터 로드 (일정칸 = 구글 캘린더, 메모칸 = 기기 전용)
-    document.getElementById('modalEventInput').value = googleEventsCache[dateStr] || '';
-    document.getElementById('modalMemoInput').value = localStorage.getItem('local_memo_' + dateStr) || '';
+    const detail = googleEventDetailsCache[dateStr];
+    if (detail && detail.startDate && detail.endDate) {
+      selectedStartDate = detail.startDate;
+      selectedEndDate = detail.endDate;
+    } else {
+      selectedStartDate = dateStr;
+      selectedEndDate = dateStr;
+    }
+    updateDateFieldsDisplay();
+    document.getElementById('miniCalendarDropdown').style.display = 'none';
+
+    document.getElementById('modalMemoInput').value = googleEventsCache[dateStr] || localStorage.getItem('memo_' + dateStr) || '';
     
+    const allDayCheckbox = document.getElementById('allDayCheckbox');
+    if (detail && !detail.isAllDay && detail.startDateTime) {
+      allDayCheckbox.checked = false;
+      document.getElementById('timeSelectorContainer').style.display = 'flex';
+      try {
+        document.getElementById('startTimeSelect').value = detail.startDateTime.split('T')[1].substring(0, 5);
+        document.getElementById('endTimeSelect').value = detail.endDateTime.split('T')[1].substring(0, 5);
+      } catch (e) {}
+    } else {
+      allDayCheckbox.checked = true;
+      document.getElementById('timeSelectorContainer').style.display = 'none';
+    }
+
     document.getElementById('detailModal').style.display = 'flex';
   }
 
@@ -1206,6 +1560,7 @@
   function closeModal(modalId, event) {
     if (event) event.stopPropagation();
     document.getElementById(modalId).style.display = 'none';
+    document.getElementById('miniCalendarDropdown').style.display = 'none';
   }
 
   function initApp() {
