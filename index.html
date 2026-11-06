@@ -290,12 +290,6 @@
     .shift-C { background-color: var(--shift-c-color); color: #1b5e20; }
     .shift-OFF { background-color: var(--off-color); color: #b71c1c; }
 
-    .shift-unselected {
-      background-color: #ffffff;
-      color: #333333;
-      border: 1px solid #eee;
-    }
-
     .modal-overlay {
       display: none;
       position: fixed;
@@ -330,20 +324,7 @@
     .modal-title { font-size: 1.05rem; font-weight: bold; }
     .modal-close { background: none; border: none; font-size: 1.2rem; font-weight: bold; color: #888; cursor: pointer; }
 
-    .modal-body { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-
-    .modal-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      font-weight: bold;
-    }
-
     .modal-memo-section {
-      border-top: 1px solid #eee;
-      padding-top: 10px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -485,10 +466,10 @@
 
     .modal-textarea {
       width: 100%;
-      height: 48px;
+      height: 64px;
       border: 1px solid #ccc;
       border-radius: 6px;
-      padding: 6px;
+      padding: 8px;
       font-size: 0.85rem;
       resize: none;
       outline: none;
@@ -592,7 +573,6 @@
       <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
     </div>
     <div id="modalHolidayInfo" style="color: var(--holiday-color); font-weight: bold; margin-bottom: 6px; font-size: 0.85rem;"></div>
-    <div class="modal-body" id="modalShiftList"></div>
 
     <div class="modal-memo-section">
       <!-- 구글 캘린더 스타일 기간 선택 UI -->
@@ -919,7 +899,6 @@
     return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
   }
 
-  // 구글 캘린더 일정을 가져올 때 기간 범위(시작일~종료일) 내 모든 날짜에 메모 캐시 및 로컬 저장소 동기화
   async function fetchAndRenderGoogleEvents() {
     if (!gapi.client || gapi.client.getToken() === null) return;
 
@@ -973,7 +952,6 @@
           let last = parseSafeDate(realEndStr);
           if (last < curr) last = new Date(curr);
 
-          // 기간 내 모든 날짜에 메모 기록 반영
           while (curr <= last) {
             let dateStr = formatDate(curr);
             
@@ -1011,7 +989,6 @@
     const memoText = document.getElementById('modalMemoInput').value.trim();
     const isAllDay = document.getElementById('allDayCheckbox').checked;
     
-    // 선택된 기간 내의 모든 날짜에 로컬 저장소 반영
     let curr = parseSafeDate(selectedStartDate);
     let last = parseSafeDate(selectedEndDate);
     if (last < curr) last = new Date(curr);
@@ -1459,21 +1436,6 @@
     } else {
       holiEl.style.display = 'none';
     }
-
-    const listEl = document.getElementById('modalShiftList');
-    listEl.innerHTML = '';
-    shifts.forEach(item => {
-      const row = document.createElement('div');
-      if (myTeam === 0) row.className = `modal-item ${item.shift.class}`;
-      else if (item.team === myTeam) {
-        row.className = `modal-item ${item.shift.class}`;
-        row.style.border = '2px solid var(--primary-color)';
-      } else {
-        row.className = 'modal-item shift-unselected';
-      }
-      row.innerHTML = `<span>${item.team}조</span> <span>${item.shift.code}</span>`;
-      listEl.appendChild(row);
-    });
 
     const detail = googleEventDetailsCache[dateStr];
     if (detail && detail.startDate && detail.endDate) {
